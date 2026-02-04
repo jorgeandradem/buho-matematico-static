@@ -7,19 +7,27 @@ import {
 import OwlImage from './OwlImage.vue';
 import { useOnline } from '@vueuse/core';
 import { playOwlHoot } from '../utils/sound';
+// IMPORTANTE: Importamos la lista de mensajes
+import { incentiveMessages } from '../utils/messages';
 
 const emit = defineEmits(['select', 'exit']);
 const props = defineProps(['fromView']);
 
-// Estado Usuario
+// Estado del mensaje aleatorio
+const randomIncentive = ref("");
+
 const studentName = ref(localStorage.getItem('owlStudentName') || "");
 const isEditingName = ref(!localStorage.getItem('owlStudentName'));
 const showOwl = ref(false);
 const greeting = ref("");
-const isExiting = ref(false);
 const isOnline = useOnline();
 
-// Estado del Modal de Configuración
+// Función para elegir un mensaje al azar
+const pickRandomMessage = () => {
+  const randomIndex = Math.floor(Math.random() * incentiveMessages.length);
+  randomIncentive.value = incentiveMessages[randomIndex];
+};
+
 const showConfigModal = ref(false);
 const selectedSubject = ref(null); 
 const configMode = ref('notebook'); 
@@ -51,21 +59,10 @@ const startGame = () => {
     });
 };
 
-const speak = (text) => {
-  if ('speechSynthesis' in window) {
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    const voices = window.speechSynthesis.getVoices();
-    const esVoice = voices.find(v => v.lang.includes('es'));
-    if (esVoice) utterance.voice = esVoice;
-    utterance.lang = 'es-ES';
-    utterance.pitch = 1.1;
-    utterance.rate = 1.0;
-    window.speechSynthesis.speak(utterance);
-  }
-};
-
 onMounted(() => {
+  // Ejecutamos la elección del mensaje al cargar la pantalla
+  pickRandomMessage();
+
   if (props.fromView && ['add', 'sub', 'mult', 'div'].includes(props.fromView)) {
       setTimeout(() => { openConfig(props.fromView); }, 500);
   }
@@ -76,19 +73,20 @@ onMounted(() => {
     if (props.fromView === 'cover' || !props.fromView) {
         playOwlHoot();
         setTimeout(() => {
-            updateGreeting();
-            const name = studentName.value || "amigo";
-            speak(`Hola ${name}, bienvenido.`);
+            greeting.value = studentName.value ? `¡Hola ${studentName.value}!` : "¡Hola! Tu nombre:";
         }, 800);
-    } else {
-        updateGreeting(true); 
     }
   }, 300);
 });
 
-const updateGreeting = () => { greeting.value = studentName.value ? `¡Hola ${studentName.value}!` : "¡Hola! Tu nombre:"; };
-const saveName = () => { if (studentName.value.trim()) { localStorage.setItem('owlStudentName', studentName.value); isEditingName.value = false; greeting.value = `¡Gracias ${studentName.value}!`; } };
-const handleExit = () => { isExiting.value = true; greeting.value = `¡ADIÓS!`; playOwlHoot(); setTimeout(() => emit('exit'), 1500); };
+const saveName = () => { 
+  if (studentName.value.trim()) { 
+    localStorage.setItem('owlStudentName', studentName.value); 
+    isEditingName.value = false; 
+    greeting.value = `¡Gracias ${studentName.value}!`; 
+  } 
+};
+
 const currentSubjectLabel = computed(() => {
     const opt = options.find(o => o.id === selectedSubject.value);
     return opt ? opt.label : '';
@@ -98,7 +96,7 @@ const currentSubjectLabel = computed(() => {
 <template>
   <div class="h-[100dvh] bg-gradient-to-br from-indigo-500 to-purple-600 flex flex-col p-4 overflow-hidden relative font-sans text-slate-900">
     
-    <!-- MODAL CONFIGURACIÓN -->
+    <!-- MODAL CONFIGURACIÓN (Se mantiene igual) -->
     <div v-if="showConfigModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
         <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl relative flex flex-col gap-4 border-4 border-indigo-100">
             <button @click="showConfigModal = false" class="absolute top-3 right-3 text-slate-400 hover:text-red-500"><CloseIcon /></button>
@@ -112,47 +110,27 @@ const currentSubjectLabel = computed(() => {
                 <button @click="configMode = 'notebook'" :class="`p-3 rounded-xl border-2 font-bold text-sm ${configMode === 'notebook' ? 'border-yellow-500 bg-yellow-50 text-yellow-700' : 'border-slate-200 text-slate-400'}`">📔 Cuaderno</button>
             </div>
 
-            <!-- NIVEL (Solo Multiplicar Y MODO CUADERNO) -->
-            <div v-if="selectedSubject === 'mult' && configMode === 'notebook'" class="flex flex-col gap-2">
-                <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Dificultad</label>
-                <div class="grid grid-cols-2 gap-3">
-                    <button @click="configDifficulty = 1" :class="`p-3 rounded-xl border-2 font-bold text-sm ${configDifficulty === 1 ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-slate-200 text-slate-400'}`">Nivel 1</button>
-                    <button @click="configDifficulty = 2" :class="`p-3 rounded-xl border-2 font-bold text-sm ${configDifficulty === 2 ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-slate-200 text-slate-400'}`">Nivel 2</button>
-                </div>
-            </div>
-
-            <!-- TABLA (Solo Rápida) -->
-            <div v-if="configMode === 'quick'" class="flex flex-col gap-2">
-                <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tabla</label>
-                <select v-model="configTable" class="w-full p-3 rounded-xl border-2 border-slate-200 bg-slate-50 font-bold text-slate-700 outline-none focus:border-indigo-500">
-                    <option value="random">🎲 Tabla Aleatoria</option>
-                    <option v-for="n in 10" :key="n" :value="n">Tabla del {{ n }}</option>
-                </select>
-            </div>
-
             <button @click="startGame" class="w-full py-3 bg-indigo-600 text-white rounded-xl font-black text-lg shadow-lg active:scale-95 flex items-center justify-center gap-2 mt-2">
                 <Play :size="20" fill="currentColor" /> ¡JUGAR!
             </button>
         </div>
     </div>
 
-    <!-- Header App -->
+    <!-- Header y Zona Búho (Se mantienen) -->
     <header class="flex justify-between items-center w-full max-w-lg mx-auto z-30 mb-2">
-         <button @click="handleExit" class="p-2 bg-white rounded-full text-indigo-600 shadow-md border-2 border-indigo-100"><LogOut :size="20" class="transform rotate-180" /></button>
+         <button @click="emit('exit')" class="p-2 bg-white rounded-full text-indigo-600 shadow-md border-2 border-indigo-100"><LogOut :size="20" class="transform rotate-180" /></button>
          <div class="bg-white px-4 py-1 rounded-full shadow-md"><span class="text-lg font-black text-indigo-600 tracking-wider">MATERIAS</span></div>
          <div class="w-10"></div> 
     </header>
 
-    <!-- Zona Búho -->
     <div class="w-full max-w-lg mx-auto grid grid-cols-2 px-2 z-20 mb-2 items-end h-32">
        <div class="flex items-center justify-center pb-2">
            <div v-if="showOwl" class="bg-white rounded-xl p-3 shadow-lg border-2 border-indigo-200 relative animate-fade-in w-full text-center">
-              <p class="text-indigo-900 font-bold text-sm leading-tight">{{ greeting }}</p>
-              <div class="absolute top-1/2 -right-2 w-3 h-3 bg-white transform rotate-45 border-t-2 border-r-2 border-indigo-200 mt-[-6px]"></div>
+              <p class="text-indigo-900 font-bold text-sm">{{ greeting }}</p>
            </div>
        </div>
        <div class="flex flex-col items-center justify-end">
-           <div v-if="showOwl" class="w-20 h-20 filter drop-shadow-md mb-1"><OwlImage customClass="w-full h-full object-contain" /></div>
+           <div v-if="showOwl" class="w-20 h-20 mb-1"><OwlImage customClass="w-full h-full object-contain" /></div>
            <div class="bg-white/20 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-2 border border-white/30 shadow-sm w-full">
               <User :size="14" class="text-white" />
               <input v-if="isEditingName" type="text" v-model="studentName" @keyup.enter="saveName" class="bg-transparent text-white font-bold text-xs outline-none w-full" autoFocus />
@@ -163,24 +141,26 @@ const currentSubjectLabel = computed(() => {
        </div>
     </div>
 
-    <!-- Botones Materias -->
-    <div class="grid grid-cols-2 gap-3 w-full max-w-lg mx-auto flex-1 content-start py-2 z-10">
+    <!-- Botones Materias: Espaciado Desahogado Verticalmente -->
+    <div class="grid grid-cols-2 gap-6 w-full max-w-lg mx-auto flex-1 content-start py-6 z-10 px-2">
       <button v-for="opt in options" :key="opt.id" @click="openConfig(opt.id)"
-        class="group bg-white p-3 rounded-2xl border-4 border-white hover:border-indigo-200 shadow-md active:scale-95 flex flex-col items-center justify-center gap-1 h-full min-h-[110px]">
-        <div :class="`w-12 h-12 rounded-full ${opt.color} flex items-center justify-center shadow-md group-hover:scale-110 transition-transform`">
-          <component :is="opt.icon" :size="24" class="text-white" :stroke-width="3" />
+        class="group bg-white p-4 rounded-3xl border-4 border-white hover:border-indigo-200 shadow-xl active:scale-95 flex flex-col items-center justify-center gap-2 h-full min-h-[130px] transition-all">
+        <div :class="`w-14 h-14 rounded-full ${opt.color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`">
+          <component :is="opt.icon" :size="28" class="text-white" :stroke-width="3" />
         </div>
         <div class="text-center">
-          <h3 class="text-lg font-black text-slate-800 leading-none">{{ opt.label }}</h3>
-          <p class="text-slate-500 font-bold text-[10px] mt-1">{{ opt.desc }}</p>
+          <h3 class="text-xl font-black text-slate-800 leading-none">{{ opt.label }}</h3>
+          <p class="text-slate-500 font-bold text-[10px] mt-1 tracking-wide uppercase">{{ opt.desc }}</p>
         </div>
       </button>
     </div>
 
-    <!-- Pie -->
-    <div class="bg-indigo-50/90 rounded-xl border border-indigo-100 p-2 flex items-center justify-center gap-2 shadow-sm w-full max-w-lg mx-auto mt-2">
-      <BookOpen class="text-indigo-600" :size="16" />
-      <p class="text-slate-700 text-[10px] font-bold">¡Aprende jugando!</p>
+    <!-- PIE DE PÁGINA: Aquí se muestra el mensaje aleatorio -->
+    <div class="bg-indigo-50/90 rounded-2xl border-2 border-indigo-100 p-3 flex items-center justify-center gap-3 shadow-sm w-full max-w-lg mx-auto mt-4 mb-2 animate-fade-in">
+      <BookOpen class="text-indigo-600 shrink-0" :size="20" />
+      <p class="text-slate-800 text-xs sm:text-sm font-black italic text-center">
+        {{ randomIncentive }}
+      </p>
     </div>
   </div>
 </template>

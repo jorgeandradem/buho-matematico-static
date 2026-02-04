@@ -1,0 +1,23 @@
+{
+  "name": "Búho Matemático",
+  "short_name": "Búho Mates",
+  "description": "Aplicación educativa de matemáticas para primaria",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#4f46e5",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "/pwa-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

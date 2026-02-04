@@ -6,6 +6,7 @@ import userIcon from '@/assets/icono.png';
 const emit = defineEmits(['start']);
 
 const reloadApp = () => {
+  // Nota: En entornos de iframe, confirm() puede estar restringido.
   if(confirm('¿Seguro que quieres recargar?')) {
     location.reload();
   }
@@ -64,7 +65,8 @@ const reloadApp = () => {
       <!-- Pie de página -->
       <div class="text-center opacity-80">
         <p class="text-xs font-bold text-white">v1.0 Static Edition</p>
-        <p class="text-[10px] text-indigo-200">© Copyright 2026</p>
+        <!-- Ajuste de tamaño y color para que sea idéntico a la fila superior -->
+        <p class="text-xs font-bold text-white">© Copyright 2026</p>
       </div>
 
     </div>

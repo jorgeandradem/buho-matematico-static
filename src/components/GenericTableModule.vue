@@ -19,7 +19,7 @@ const refreshKey = ref(0);
 
 // ESTADO MODO RÁPIDO
 const userInputs = ref({});
-const showTable = ref(false); // Variable que controla el Modal
+const showTable = ref(false);
 const exercises = ref([]);
 const activeInputId = ref(null); 
 
@@ -31,7 +31,6 @@ const themes = {
 };
 const themeClasses = computed(() => themes[props.colorTheme] || themes.blue);
 
-// --- GENERADOR ---
 const generateExercises = async () => {
   isSuccess.value = false;
   showConfetti.value = false;
@@ -42,9 +41,7 @@ const generateExercises = async () => {
   if (!isNotebookMode.value) {
     let baseArray = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     if (selectedNumber.value === 'random') baseArray.sort(() => Math.random() - 0.5);
-    // Generamos los 10 ejercicios (5x2 grid)
     exercises.value = baseArray.slice(0, 10).map(i => createExerciseData(i));
-    
     await nextTick();
     if (exercises.value.length > 0) focusInput(exercises.value[0].id);
   } else {
@@ -54,12 +51,10 @@ const generateExercises = async () => {
 
 const createExerciseData = (i) => {
     let left = 0, right = 0, opChar = '+', result = 0;
-    // Tabla seleccionada o aleatoria
     let currentTableNum = selectedNumber.value === 'random' ? Math.floor(Math.random() * 9) + 2 : parseInt(selectedNumber.value);
     if (props.operation === 'div') currentTableNum = selectedNumber.value === 'random' ? Math.floor(Math.random() * 10) + 1 : parseInt(selectedNumber.value);
     
-    let varNum = i; // Número variable (1-10)
-
+    let varNum = i;
     if (props.operation === 'sub') {
         left = Math.max(currentTableNum, varNum) + Math.min(currentTableNum, varNum); 
         right = Math.min(currentTableNum, varNum); opChar = '-'; result = left - right;
@@ -90,7 +85,7 @@ const handleKeypadPress = (num) => {
     if (currentVal === 'error') currentVal = '';
     
     const newVal = currentVal + num.toString();
-    if (newVal.length > ex.result.toString().length + 1) return; // Limite simple
+    if (newVal.length > ex.result.toString().length + 1) return;
 
     if (parseInt(newVal) === ex.result) {
         userInputs.value[id] = 'correct'; 
@@ -138,24 +133,21 @@ const handleDelete = () => {
       </div>
       <div class="flex gap-2">
            <button @click="generateExercises" class="p-2 bg-white shadow-sm rounded-lg text-slate-500 active:scale-95 transition"><Eraser :size="18" /></button>
-           <!-- BOTÓN OJO: Activa el Modal -->
            <button @click="showTable = !showTable" :class="`p-2 rounded-lg shadow-sm transition active:scale-95 ${showTable ? 'bg-indigo-100 text-indigo-600 ring-2 ring-indigo-300' : 'bg-white text-slate-500'}`">
                <component :is="showTable ? EyeOff : Eye" :size="18" />
            </button>
       </div>
     </div>
 
-    <!-- MODAL FLOTANTE: TABLA DE AYUDA -->
+    <!-- MODAL TABLA AYUDA -->
     <div v-if="showTable" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in" @click.self="showTable = false">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xs border-4 border-indigo-100 overflow-hidden flex flex-col max-h-[70vh]">
-            <!-- Encabezado Modal -->
             <div class="bg-indigo-50 p-3 border-b border-indigo-100 flex justify-between items-center shrink-0">
                 <div class="flex items-center gap-2 font-black text-slate-700">
                     <HelpCircle :size="20" class="text-indigo-500"/> Soluciones
                 </div>
                 <button @click="showTable = false" class="p-1 bg-white rounded-full text-slate-400 hover:text-red-500 transition shadow-sm"><X :size="20" /></button>
             </div>
-            <!-- Lista -->
             <div class="overflow-y-auto p-3 bg-white">
                 <div class="grid grid-cols-1 gap-2">
                     <div v-for="ex in exercises" :key="'h-'+ex.id" class="flex justify-between items-center p-2 rounded-xl bg-slate-50 border border-slate-100 shadow-sm">
@@ -164,7 +156,6 @@ const handleDelete = () => {
                     </div>
                 </div>
             </div>
-            <!-- Pie -->
             <div class="p-3 bg-slate-50 border-t border-slate-100 text-center shrink-0">
                 <button @click="showTable = false" class="w-full py-2 bg-indigo-600 text-white font-bold rounded-xl shadow-md active:scale-95 transition">¡Entendido!</button>
             </div>
@@ -186,30 +177,38 @@ const handleDelete = () => {
                  <span class="text-slate-300">=</span>
                </div>
                
-               <!-- INPUT -->
-               <div @click="focusInput(ex.id)" 
-                    :id="ex.id"
-                    class="w-16 h-9 rounded-lg border-2 flex items-center justify-center text-lg font-bold cursor-pointer transition-colors"
-                    :class="[
-                       userInputs[ex.id] === 'correct' ? 'bg-green-100 border-green-400 text-green-700' :
-                       userInputs[ex.id] === 'error' ? 'bg-red-50 border-red-300 text-red-500' :
-                       activeInputId === ex.id ? 'bg-yellow-50 border-yellow-400 text-slate-800' : 'bg-slate-50 border-slate-200 text-slate-400'
-                    ]"
-               >
-                  <Check v-if="userInputs[ex.id] === 'correct'" :size="16" />
-                  <span v-else>{{ userInputs[ex.id] === 'error' ? '?' : (userInputs[ex.id] || '') }}</span>
+               <!-- INPUT CON VALIDACIÓN EXTERNA: CORRECCIÓN FINAL -->
+               <div class="relative flex items-center justify-center w-full px-5">
+                 <div @click="focusInput(ex.id)" 
+                      :id="ex.id"
+                      class="w-16 h-10 rounded-lg border-2 flex items-center justify-center text-lg font-bold cursor-pointer transition-colors"
+                      :class="[
+                         userInputs[ex.id] === 'correct' ? 'bg-green-100 border-green-500 text-green-700 shadow-sm' :
+                         userInputs[ex.id] === 'error' ? 'bg-red-50 border-red-300 text-red-500' :
+                         activeInputId === ex.id ? 'bg-yellow-50 border-yellow-400 text-slate-800' : 'bg-slate-50 border-slate-200 text-slate-400'
+                      ]"
+                 >
+                    <!-- El número NO desaparece al acertar -->
+                    <span>{{ userInputs[ex.id] === 'error' ? '?' : (userInputs[ex.id] === 'correct' ? ex.result : (userInputs[ex.id] || '')) }}</span>
+                 </div>
+                 
+                 <!-- Palomita externa a la derecha, fuera de la celda -->
+                 <div v-if="userInputs[ex.id] === 'correct'" 
+                      class="absolute left-full ml-1 text-green-600 animate-fade-in-scale z-10">
+                    <Check :size="20" stroke-width="4" />
+                 </div>
                </div>
              </div>
            </div>
        </div>
     </div>
 
-    <!-- MODO CUADERNO (Overlay Fijo) -->
+    <!-- MODO CUADERNO: BLINDADO -->
     <div v-if="isNotebookMode" class="fixed inset-0 z-50 bg-slate-100">
         <VerticalExercise 
             :key="refreshKey" 
             :operation="props.operation" 
-            :difficulty="difficulty"
+            :difficulty="props.initialDifficulty"
             :title="title" 
             :icon="icon"
             :colorTheme="colorTheme"
@@ -229,4 +228,14 @@ const handleDelete = () => {
 .font-numbers { font-family: 'Nunito', sans-serif; }
 .animate-fade-in { animation: fadeIn 0.2s ease-out; }
 @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+/* Animación optimizada para la palomita externa */
+.animate-fade-in-scale {
+  animation: fadeInScale 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.5) translateX(-5px); }
+  to { opacity: 1; transform: scale(1) translateX(0); }
+}
 </style>
